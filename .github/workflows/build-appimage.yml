@@ -27,7 +27,7 @@ jobs:
 
       - name: Install build dependencies
         run: |
-          dnf install -y \
+          dnf install -y --skip-unavailable \
             meson appstream cairo-devel clippy dbus-devel \
             desktop-file-utils djvulibre-devel exempi-devel \
             gi-docgen glib2-devel gobject-introspection-devel \
@@ -36,8 +36,7 @@ jobs:
             libsecret-devel libtiff-devel nautilus-devel \
             poppler-glib-devel yelp-tools zlib-devel \
             rust rustfmt cargo blueprint-compiler \
-            gtk4-unix-print-devel libspelling-devel \
-            libnautilus-extension-devel gdk-pixbuf2-devel \
+            libspelling-devel gdk-pixbuf2-devel \
             patchelf wget which
 
       - name: Install appimagetool
