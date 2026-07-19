@@ -41,10 +41,12 @@ jobs:
 
       - name: Install appimagetool
         run: |
+          dnf install -y squashfs-tools
           wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O /tmp/appimagetool
           chmod +x /tmp/appimagetool
-          /tmp/appimagetool --appimage-extract > /dev/null 2>&1
-          mv /tmp/squashfs-root /opt/appimagetool
+          cd /tmp
+          /tmp/appimagetool --appimage-extract
+          mv squashfs-root /opt/appimagetool
           ln -sf /opt/appimagetool/AppRun /usr/local/bin/appimagetool
 
       - name: Build gir (Rust FFI bindings generator)
