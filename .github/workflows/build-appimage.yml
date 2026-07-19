@@ -43,7 +43,7 @@ jobs:
             poppler-glib-devel yelp-tools zlib-devel \
             rust rustfmt cargo blueprint-compiler \
             libspelling-devel gdk-pixbuf2-devel \
-            patchelf wget which
+            patchelf wget which file
 
       - name: Install appimagetool
         run: |
