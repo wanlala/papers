@@ -29,7 +29,7 @@ collect_libs() {
       lib_path="/${BASH_REMATCH[2]}"
     fi
     # /path/ld-linux-x86-64.so.2 (0x...)  (no "=>")
-    if [[ "$line" =~ ^[[:space:]]*(/[-/.a-zA-Z0-9_]+)[[:space:]]*\\(0x ]]; then
+    if [[ "$line" =~ ^[[:space:]]*(/[^[:space:]]+) ]]; then
       lib_path="${BASH_REMATCH[1]}"
     fi
     if [ -n "$lib_path" ] && [ -f "$lib_path" ] && [ -z "${SEEN_LIBS[$lib_path]:-}" ]; then
@@ -75,7 +75,7 @@ for src_dir in "${MODULE_DIRS[@]}"; do
 done
 
 # Step 3b: Collect transitive deps from newly copied module libraries
-# (GTK4 modules, GIO modules, etc. are dlopen'd and their ldd deps are missed)
+# (GTK4 modules, GIO modules, etc. are dlopen-ed and their ldd deps are missed)
 while IFS= read -r -d '' f; do
   collect_libs "$f"
 done < <(find "$APP_DIR/usr/lib64/gtk-4.0" "$APP_DIR/usr/lib64/gio" \
