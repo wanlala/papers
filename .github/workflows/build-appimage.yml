@@ -74,9 +74,6 @@ jobs:
             -Dtests=false \
             -Dprofile=default
 
-      - name: Update Rust bindings
-        run: meson compile -C $MESON_BUILD_DIR update-rust-bindings
-
       - name: Compile
         run: meson compile -C $MESON_BUILD_DIR
 
