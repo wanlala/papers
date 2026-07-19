@@ -131,12 +131,14 @@ for theme in Adwaita hicolor; do
   fi
 done
 
-# Previewer icon: Adwaita has only -symbolic variant, create non-symbolic copy
-if [ ! -f "$APP_DIR/usr/share/icons/Adwaita/scalable/actions/document-print-preview.svg" ] && \
-   [ -f "$APP_DIR/usr/share/icons/Adwaita/symbolic/actions/document-print-preview-symbolic.svg" ]; then
-  mkdir -p "$APP_DIR/usr/share/icons/Adwaita/scalable/actions"
-  cp "$APP_DIR/usr/share/icons/Adwaita/symbolic/actions/document-print-preview-symbolic.svg" \
-     "$APP_DIR/usr/share/icons/Adwaita/scalable/actions/document-print-preview.svg"
+# Previewer icon: copy to AppDir root where appimagetool expects it
+# First try to find a non-symbolic version, fall back to any document-print-preview icon
+ICON_PREVIEW=$(find /usr/share/icons -name "document-print-preview.svg" -not -name "*-symbolic*" 2>/dev/null | head -1)
+if [ -z "$ICON_PREVIEW" ]; then
+  ICON_PREVIEW=$(find /usr/share/icons -name "document-print-preview*" 2>/dev/null | head -1)
+fi
+if [ -n "$ICON_PREVIEW" ]; then
+  cp "$ICON_PREVIEW" "$APP_DIR/document-print-preview.svg" 2>/dev/null
 fi
 
 # ===========================================================================
@@ -191,7 +193,10 @@ chmod +x "$APP_DIR/AppRun"
 # ===========================================================================
 # 10. Ensure .desktop file
 # ===========================================================================
-DESKTOP_FILE=$(find "$APP_DIR/usr/share/applications" -name "*.desktop" 2>/dev/null | head -1)
+DESKTOP_FILE=$(find "$APP_DIR/usr/share/applications" -name "org.gnome.Papers.desktop" 2>/dev/null | head -1)
+if [ -z "$DESKTOP_FILE" ]; then
+  DESKTOP_FILE=$(find "$APP_DIR/usr/share/applications" -name "*.desktop" 2>/dev/null | head -1)
+fi
 if [ -z "$DESKTOP_FILE" ]; then
   cat > "$APP_DIR/org.gnome.Papers.desktop" << 'DESKTOP'
 [Desktop Entry]
@@ -214,7 +219,7 @@ fi
 # ===========================================================================
 # 11. Ensure icon
 # ============================================================================
-ICON=$(find "$APP_DIR/usr/share/icons" -name "org.gnome.Papers*" -type f 2>/dev/null | head -1)
+ICON=$(find "$APP_DIR/usr/share/icons" -name "org.gnome.Papers.png" -o -name "org.gnome.Papers.svg" 2>/dev/null | head -1)
 if [ -z "$ICON" ]; then
   ICON=$(find "$APP_DIR/usr/share/icons" -name "*.png" -type f 2>/dev/null | head -1)
 fi
