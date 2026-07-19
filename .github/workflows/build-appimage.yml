@@ -1,0 +1,93 @@
+name: Build Papers AppImage
+
+on:
+  workflow_dispatch:
+
+env:
+  MESON_BUILD_DIR: _build
+  APP_DIR: AppDir
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: fedora:rawhide
+
+    steps:
+      - name: Checkout with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build dependencies
+        run: |
+          dnf install -y \
+            meson appstream cairo-devel clippy dbus-devel \
+            desktop-file-utils djvulibre-devel exempi-devel \
+            gi-docgen glib2-devel gobject-introspection-devel \
+            gsettings-desktop-schemas-devel gtk4-devel itstool \
+            libadwaita-devel libarchive-devel libsass-devel \
+            libsecret-devel libtiff-devel nautilus-devel \
+            poppler-glib-devel yelp-tools zlib-devel \
+            rust rustfmt cargo git blueprint-compiler \
+            gtk4-unix-print-devel libspelling-devel \
+            libnautilus-extension-devel gdk-pixbuf2-devel \
+            patchelf wget which
+
+      - name: Install appimagetool
+        run: |
+          wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O /tmp/appimagetool
+          chmod +x /tmp/appimagetool
+          /tmp/appimagetool --appimage-extract > /dev/null 2>&1
+          mv /tmp/squashfs-root /opt/appimagetool
+          ln -sf /opt/appimagetool/AppRun /usr/local/bin/appimagetool
+
+      - name: Build gir (Rust FFI bindings generator)
+        run: |
+          cargo install --path rust/gir
+          echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+      - name: Meson setup
+        run: |
+          meson setup $MESON_BUILD_DIR \
+            --prefix=/usr \
+            --libdir=lib64 \
+            -Dbuildtype=release \
+            -Dnautilus=false \
+            -Dthumbnailer=true \
+            -Ddocumentation=false \
+            -Dintrospection=disabled \
+            -Duser_doc=false \
+            -Dtests=false \
+            -Dprofile=default
+
+      - name: Update Rust bindings
+        run: meson compile -C $MESON_BUILD_DIR update-rust-bindings
+
+      - name: Compile
+        run: meson compile -C $MESON_BUILD_DIR
+
+      - name: Install to AppDir
+        run: |
+          DESTDIR=$PWD/$APP_DIR meson install -C $MESON_BUILD_DIR
+          # Meson default prefix fallback: /usr/local → /usr
+          if [ -d "$APP_DIR/usr/local" ]; then
+            cp -a "$APP_DIR/usr/local/"* "$APP_DIR/usr/"
+            rm -rf "$APP_DIR/usr/local"
+          fi
+
+      - name: Bundle dependencies
+        run: bash .github/workflows/bundle-deps.sh $APP_DIR
+
+      - name: Create AppImage
+        run: |
+          appimagetool -n --comp gzip \
+            "$APP_DIR" \
+            "Papers-$(date +%Y%m%d)-x86_64.AppImage"
+
+      - name: Upload AppImage
+        uses: actions/upload-artifact@v4
+        with:
+          name: Papers-x86_64-AppImage
+          path: Papers-*.AppImage
+          if-no-files-found: error
