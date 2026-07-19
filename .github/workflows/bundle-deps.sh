@@ -58,7 +58,6 @@ done
 # ===========================================================================
 # 3. Copy GTK4 / GDK / GIO modules
 # ===========================================================================
-# glibc/NSS/libstdc++ are NOT bundled — host or ablrun provides them
 
 MODULE_DIRS=(
   /usr/lib64/gtk-4.0
@@ -162,7 +161,33 @@ if command -v patchelf &>/dev/null; then
 fi
 
 # ===========================================================================
-# 9. Create AppRun entry point
+# 10. Copy GLibc, NSS, and other critical system libraries
+# ===========================================================================
+# Bundled after patchelf to avoid corrupting ld-linux/libc with --remove-rpath
+# Used via bundled ld-linux in AppRun for cross-distro glibc compatibility
+GLIBC_LIBS=(
+  libc.so.6 libm.so.6 libpthread.so.0 libdl.so.2 librt.so.1
+  libstdc++.so.6 libgcc_s.so.1 ld-linux-x86-64.so.2
+  libresolv.so.2 libnsl.so.2 libcrypt.so.2
+  libnss_dns.so.2 libnss_files.so.2 libnss_mdns4_minimal.so.2
+  libnss_myhostname.so.2 libnss_resolve.so.2 libnss_systemd.so.2
+  libBrokenLocale.so.1 libanl.so.1 libthread_db.so.1 libcidn.so.1
+  libnss3.so libnssutil3.so libsmime3.so libssl3.so
+  libplds4.so libplc4.so libnspr4.so
+  libcups.so.2 libcupsimage.so.2
+)
+
+for libname in "${GLIBC_LIBS[@]}"; do
+  for dir in /usr/lib64 /usr/lib; do
+    if [ -f "$dir/$libname" ]; then
+      cp -af "$dir/$libname"* "$LIBDIR/" 2>/dev/null || true
+      break
+    fi
+  done
+done
+
+# ===========================================================================
+# 11. Create AppRun entry point
 # ===========================================================================
 cat > "$APP_DIR/AppRun" << 'APPRUN'
 #!/bin/bash
@@ -185,13 +210,18 @@ if [ -f "$LOADERS_CACHE" ]; then
   export GDK_PIXBUF_MODULE_FILE="$LOADERS_CACHE"
 fi
 
-# Direct execution — glibc provided by host system or ablrun
-exec "$HERE/usr/bin/papers" "$@"
+# Use bundled dynamic linker for cross-distro glibc compatibility
+LINKER="$HERE/usr/lib64/ld-linux-x86-64.so.2"
+if [ -x "$LINKER" ]; then
+  exec "$LINKER" --library-path "$LD_LIBRARY_PATH" "$HERE/usr/bin/papers" "$@"
+else
+  exec "$HERE/usr/bin/papers" "$@"
+fi
 APPRUN
 chmod +x "$APP_DIR/AppRun"
 
 # ===========================================================================
-# 10. Ensure .desktop file
+# 12. Ensure .desktop file
 # ===========================================================================
 DESKTOP_FILE=$(find "$APP_DIR/usr/share/applications" -name "org.gnome.Papers.desktop" 2>/dev/null | head -1)
 if [ -z "$DESKTOP_FILE" ]; then
@@ -217,7 +247,7 @@ else
 fi
 
 # ===========================================================================
-# 11. Ensure icon
+# 13. Ensure icon
 # ============================================================================
 ICON=$(find "$APP_DIR/usr/share/icons" -name "org.gnome.Papers.png" -o -name "org.gnome.Papers.svg" 2>/dev/null | head -1)
 if [ -z "$ICON" ]; then
@@ -228,7 +258,7 @@ if [ -n "$ICON" ]; then
 fi
 
 # ===========================================================================
-# 12. Strip debugging symbols
+# 14. Strip debugging symbols
 # ===========================================================================
 if command -v strip &>/dev/null; then
   find "$APP_DIR/usr/bin" -type f -executable -exec strip --strip-all {} \; 2>/dev/null || true
@@ -236,7 +266,7 @@ if command -v strip &>/dev/null; then
 fi
 
 # ===========================================================================
-# 13. Remove development leftovers
+# 15. Remove development leftovers
 # ===========================================================================
 rm -rf \
   "$APP_DIR/usr/include" \
