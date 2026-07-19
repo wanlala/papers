@@ -14,6 +14,12 @@ jobs:
       image: fedora:rawhide
 
     steps:
+      # Container (fedora:rawhide) starts without git.
+      # Install git FIRST so checkout can clone with submodules.
+      - name: Install git into container
+        run: |
+          dnf install -y git 2>/dev/null || microdnf install -y git
+
       - name: Checkout with submodules
         uses: actions/checkout@v4
         with:
@@ -29,7 +35,7 @@ jobs:
             libadwaita-devel libarchive-devel libsass-devel \
             libsecret-devel libtiff-devel nautilus-devel \
             poppler-glib-devel yelp-tools zlib-devel \
-            rust rustfmt cargo git blueprint-compiler \
+            rust rustfmt cargo blueprint-compiler \
             gtk4-unix-print-devel libspelling-devel \
             libnautilus-extension-devel gdk-pixbuf2-devel \
             patchelf wget which
