@@ -131,6 +131,14 @@ for theme in Adwaita hicolor; do
   fi
 done
 
+# Previewer icon: Adwaita has only -symbolic variant, create non-symbolic copy
+if [ ! -f "$APP_DIR/usr/share/icons/Adwaita/scalable/actions/document-print-preview.svg" ] && \
+   [ -f "$APP_DIR/usr/share/icons/Adwaita/symbolic/actions/document-print-preview-symbolic.svg" ]; then
+  mkdir -p "$APP_DIR/usr/share/icons/Adwaita/scalable/actions"
+  cp "$APP_DIR/usr/share/icons/Adwaita/symbolic/actions/document-print-preview-symbolic.svg" \
+     "$APP_DIR/usr/share/icons/Adwaita/scalable/actions/document-print-preview.svg"
+fi
+
 # ===========================================================================
 # 7. Copy fonts
 # ===========================================================================
