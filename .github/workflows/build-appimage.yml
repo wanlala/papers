@@ -14,11 +14,21 @@ jobs:
       image: fedora:rawhide
 
     steps:
+      # Restore dnf cache first so ALL dnf commands benefit, including git install.
+      # Key is static (no hashFiles) because we cannot checkout before git exists.
+      - name: Cache dnf packages
+        uses: actions/cache@v4
+        with:
+          path: /var/cache/dnf
+          key: dnf-v1
+          restore-keys: |
+            dnf-
+
       # Container (fedora:rawhide) starts without git.
       # Install git FIRST so checkout can clone with submodules.
       - name: Install git into container
         run: |
-          dnf install -y git 2>/dev/null || microdnf install -y git
+          dnf install -y --setopt=metadata_expire=86400 git 2>/dev/null || microdnf install -y git
 
       - name: Checkout (without submodules)
         uses: actions/checkout@v4
@@ -31,9 +41,35 @@ jobs:
           git submodule init
           git submodule update --checkout
 
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: cargo-${{ hashFiles('Cargo.lock') }}
+
+      - name: Cache meson build
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.MESON_BUILD_DIR }}
+          key: meson-${{ github.sha }}
+          restore-keys: |
+            meson-${{ github.ref }}-
+            meson-
+
+      - name: Cache ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.ccache
+          key: ccache-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ github.ref }}-
+            ccache-
+
       - name: Install build dependencies
         run: |
-          dnf install -y --skip-unavailable \
+          dnf install -y --skip-unavailable --setopt=metadata_expire=86400 \
             meson appstream cairo-devel clippy dbus-devel \
             desktop-file-utils djvulibre-devel exempi-devel \
             gi-docgen glib2-devel gobject-introspection-devel \
@@ -43,11 +79,11 @@ jobs:
             poppler-glib-devel yelp-tools zlib-devel \
             rust rustfmt cargo blueprint-compiler \
             libspelling-devel gdk-pixbuf2-devel \
-            patchelf wget which file
+            patchelf wget which file ccache
 
       - name: Install appimagetool
         run: |
-          dnf install -y squashfs-tools
+          dnf install -y --setopt=metadata_expire=86400 squashfs-tools
           wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage" -O /tmp/appimagetool
           chmod +x /tmp/appimagetool
           cd /tmp
@@ -62,20 +98,39 @@ jobs:
 
       - name: Meson setup
         run: |
-          meson setup $MESON_BUILD_DIR \
-            --prefix=/usr \
-            --libdir=lib64 \
-            -Dbuildtype=release \
-            -Dnautilus=false \
-            -Dthumbnailer=true \
-            -Ddocumentation=false \
-            -Dintrospection=disabled \
-            -Duser_doc=false \
-            -Dtests=false \
-            -Dprofile=default
+          export CC="ccache gcc"
+          export CXX="ccache g++"
+          if [ -d "$MESON_BUILD_DIR" ]; then
+            meson setup --reconfigure "$MESON_BUILD_DIR" \
+              --prefix=/usr \
+              --libdir=lib64 \
+              -Dbuildtype=release \
+              -Dnautilus=false \
+              -Dthumbnailer=true \
+              -Ddocumentation=false \
+              -Dintrospection=disabled \
+              -Duser_doc=false \
+              -Dtests=false \
+              -Dprofile=default
+          else
+            meson setup "$MESON_BUILD_DIR" \
+              --prefix=/usr \
+              --libdir=lib64 \
+              -Dbuildtype=release \
+              -Dnautilus=false \
+              -Dthumbnailer=true \
+              -Ddocumentation=false \
+              -Dintrospection=disabled \
+              -Duser_doc=false \
+              -Dtests=false \
+              -Dprofile=default
+          fi
 
       - name: Compile
-        run: meson compile -C $MESON_BUILD_DIR
+        run: |
+          export CC="ccache gcc"
+          export CXX="ccache g++"
+          meson compile -C $MESON_BUILD_DIR
 
       - name: Install to AppDir
         run: |

@@ -200,6 +200,8 @@ export XDG_DATA_DIRS="$HERE/usr/share:${XDG_DATA_DIRS:-}"
 export GTK_EXE_PREFIX="$HERE/usr"
 export GTK_DATA_PREFIX="$HERE/usr"
 export GDK_BACKEND="wayland,x11"
+export PPS_BACKENDS_DIR="$HERE/usr/lib64/papers/6/backends"
+export LANGUAGE=${LANGUAGE:-zh_CN:zh}
 
 # Rewrite gdk-pixbuf loaders.cache paths to match the AppDir
 LOADERS_CACHE="$HERE/usr/lib64/gdk-pixbuf-2.0/2.10.0/loaders.cache"

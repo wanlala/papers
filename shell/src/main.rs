@@ -51,6 +51,7 @@ fn main() -> glib::ExitCode {
 
     log_builder.init();
 
+    gettextrs::setlocale(gettextrs::LocaleCategory::LcAll, "");
     gettextrs::bindtextdomain(GETTEXT_PACKAGE, PPS_LOCALEDIR)
         .expect("Unable to bind the text domain");
     gettextrs::bind_textdomain_codeset(GETTEXT_PACKAGE, "UTF-8")
